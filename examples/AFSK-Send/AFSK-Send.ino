@@ -11,7 +11,7 @@ void setup() {
   Wire.begin();
   pinMode(2, OUTPUT);
   pinMode(3, OUTPUT);
-
+  
   Serial.println(F("Radio test connection"));
   Serial.println(radio.testConnection(), DEC);
   Serial.println(F("Initialize"));
@@ -31,6 +31,7 @@ void setup() {
   Serial.println(F("Starting..."));
   pinMode(11, INPUT); // Bodge for now, as pin 3 is hotwired to pin 11
   delay(100);
+  dds.setAmplitude(255);
 }
 
 void loop() {
@@ -42,7 +43,8 @@ void loop() {
     packet->appendFCS(0x03);
     packet->appendFCS(0xf0);
     packet->print(F("Hello "));
-    packet->println(millis());
+    packet->print(millis());
+    //packet->println(F("\r\nThis is a test of the HamShield Kickstarter prototype. de VE6SLP"));
     packet->finish();
     
     bool ret = radio.afsk.putTXPacket(packet);
@@ -68,7 +70,7 @@ void loop() {
     }
     Serial.println("Done sending");
     radio.setModeReceive();
-    delay(30000);
+    delay(2000);
 }
 
 /*ISR(TIMER2_OVF_vect) {
@@ -85,7 +87,9 @@ ISR(ADC_vect) {
   static uint8_t tcnt = 0;
   TIFR1 = _BV(ICF1); // Clear the timer flag
   PORTD |= _BV(2); // Diagnostic pin (D2)
+#ifndef FSK9600
   dds.clockTick();
+#endif
   if(++tcnt == 1) {
     if(radio.afsk.encoder.isSending()) {
       radio.afsk.timer();

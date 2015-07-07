@@ -22,10 +22,33 @@ volatile unsigned long lastTx = 0;
 volatile unsigned long lastTxEnd = 0;
 volatile unsigned long lastRx = 0;
 
-#define T_BIT ((unsigned int)(9600/1200))
+#define T_BIT ((unsigned int)(9600/BITRATE))
 
 #ifdef PACKET_PREALLOCATE
 SimpleFIFO<AFSK::Packet *,PPOOL_SIZE> preallocPool;
+#endif
+
+#ifdef FSK9600
+// Scrambling poly 1+x^12+x^17
+uint32_t lfsr = 0;
+static inline uint8_t shiftLFSR(uint8_t in) {
+  uint8_t out = (in ^ (lfsr >> 16) ^ (lfsr >> 11)) & 1;
+	lfsr = (lfsr << 1) | (out & 1);
+  if(out) {
+    PORTB |= _BV(3);
+  } else {
+    PORTB &= _BV(3);
+  }
+  return out;
+}
+
+static inline void fsk9600Mark() {
+  shiftLFSR(1);
+}
+
+static inline void fsk9600Space() {
+  shiftLFSR(0);
+}
 #endif
 
 void AFSK::Encoder::process() {
@@ -101,9 +124,17 @@ void AFSK::Encoder::process() {
     bitClock = 0;
 
   if(currentTone == 0) {
+#ifdef FSK9600
+    fsk9600Space();
+#else
     dds->setFrequency(AFSK_SPACE);
+#endif
   } else {
+#ifdef FSK9600
+    fsk9600Mark();
+#else
     dds->setFrequency(AFSK_MARK);
+#endif
   }
 }
 

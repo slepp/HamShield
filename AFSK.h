@@ -5,8 +5,15 @@
 #include <SimpleFIFO.h>
 #include <DDS.h>
 
+// Try 9600 baud FSK instead of AFSK
+#define FSK9600
+
 #define SAMPLERATE 9600
+#ifdef FSK9600
+#define BITRATE    9600
+#else
 #define BITRATE    1200
+#endif
 
 #define SAMPLEPERBIT (SAMPLERATE / BITRATE)
 

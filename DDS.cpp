@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "DDS.h"
 
+#define FSK9600
+
 // To start the DDS, we use Timer1, set to the reference clock
 // We use Timer2 for the PWM output, running as fast as feasible
 void DDS::start() {
@@ -10,6 +12,7 @@ void DDS::start() {
   // First, the timer for the PWM output
   // Setup the timer to use OC2B (pin 3) in fast PWM mode with a configurable top
   // Run it without the prescaler
+#ifndef FSK9600
 #ifdef DDS_PWM_PIN_3
   TCCR2A = (TCCR2A | _BV(COM2B1)) & ~(_BV(COM2B0) | _BV(COM2A1) | _BV(COM2A0)) |
          _BV(WGM21) | _BV(WGM20);
@@ -35,6 +38,7 @@ void DDS::start() {
   
 #ifdef DDS_USE_ONLY_TIMER2
   TIMSK2 |= _BV(TOIE2);
+#endif
 #endif
 
   // Second, setup Timer1 to trigger the ADC interrupt
