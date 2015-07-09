@@ -17,14 +17,30 @@ void setup() {
   Serial.println(F("Initialize"));
   delay(100);
   radio.initialize();
+  radio.setSQOn();
   Serial.println(F("Frequency"));
   delay(100);
-//  radio.setVHF();
-//  radio.setRfPower(0);
-//  radio.setModeReceive();
-  radio.setVolume1(0xFF);
-  radio.setVolume2(0xFF);
   radio.frequency(145050);
+  Serial.print(F("Squelch(H/L): "));
+  //radio.setSQHiThresh(9000);
+  Serial.print(radio.getSQHiThresh());
+  Serial.print(F(" / "));
+  //radio.setSQLoThresh(800);
+  Serial.println(radio.getSQLoThresh());
+  /*uint16_t b[4];
+  I2Cdev::readWord(A1846S_DEV_ADDR_SENLOW, 0x30, b);
+  b[0] &= ~(_BV(9) | _BV(8) |_BV(0));
+  b[0] |= _BV(5);
+  //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x30, 791); //(791 & ~(_BV(9) | _BV(8))) | _BV(9));
+  Serial.println(b[0]);
+  //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x30, 800);*/
+  radio.setVolume1(7);
+  radio.setVolume2(7);
+  /*radio.setSQOn();
+  radio.setVHF();*/
+  radio.setModeReceive();
+  Serial.print(F("RX? "));
+  Serial.println(radio.getRX());
   Serial.println(F("DDS Start"));
   delay(100);
   dds.start();
@@ -53,7 +69,9 @@ void loop() {
       }
     }
     /*if(last < millis()) {
-      Serial.println(radio.readRSSI());
+      uint16_t buf;
+      Serial.println(I2Cdev::readWord(A1846S_DEV_ADDR_SENLOW, A1846S_RSSI_REG, &buf));
+      Serial.println(buf);
       last = millis()+1000;
     }*/
 }
