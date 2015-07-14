@@ -1,5 +1,8 @@
 #ifndef SimpleFIFO_h
 #define SimpleFIFO_h
+
+#include <util/atomic.h>
+
 /*
 ||
 || @file 		SimpleFIFO.h
@@ -65,25 +68,33 @@ SimpleFIFO<T,rawSize>::SimpleFIFO() : size(rawSize) {
 }
 template<typename T, int rawSize>
 bool SimpleFIFO<T,rawSize>::enqueue( T element ) {
-	if ( count() >= rawSize ) { return false; }
-	numberOfElements++;
-	nextIn %= size;
-	raw[nextIn] = element;
-	nextIn++; //advance to next index
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		if ( count() >= rawSize ) { return false; }
+		numberOfElements++;
+		nextIn %= size;
+		raw[nextIn] = element;
+		nextIn++; //advance to next index
+	}
 	return true;
 }
 template<typename T, int rawSize>
 T SimpleFIFO<T,rawSize>::dequeue() {
-	numberOfElements--;
-	nextOut %= size;
-	return raw[ nextOut++];
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		numberOfElements--;
+		nextOut %= size;
+		return raw[ nextOut++];
+	}
 }
 template<typename T, int rawSize>
 T SimpleFIFO<T,rawSize>::peek() const {
-	return raw[ nextOut % size];
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		return raw[ nextOut % size];
+  }
 }
 template<typename T, int rawSize>
 void SimpleFIFO<T,rawSize>::flush() {
-	nextIn = nextOut = numberOfElements = 0;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		nextIn = nextOut = numberOfElements = 0;
+	}
 }
 #endif

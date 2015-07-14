@@ -110,11 +110,13 @@ void AFSK::Encoder::process() {
   if(currentTone == 0) {
     PORTD |= _BV(7);
     //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x35, AFSK_SPACE*10);
-    dds->setFrequency(AFSK_SPACE);
+    //dds->setFrequency(AFSK_SPACE);
+    dds->setPrecalcFrequency(COMPILE_PRECALC_DDS(AFSK_SPACE));
   } else {
     PORTD &= ~_BV(7);
     //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x35, AFSK_MARK*10);
-    dds->setFrequency(AFSK_MARK);
+    //dds->setFrequency(AFSK_MARK);
+    dds->setPrecalcFrequency(COMPILE_PRECALC_DDS(AFSK_MARK));
   }
 }
 
@@ -132,7 +134,7 @@ bool AFSK::Encoder::start() {
   lastZero = 0;
   bitPosition = 0;
   //bitClock = 0;
-  preamble = 0b110000; // 6.7ms each, 23 = 153ms
+  preamble = configuredPreamble; //0b110000; // 6.7ms each, 23 = 153ms
   done = false;
   hdlc = true;
   packet = 0x0; // No initial packet, find in the ISR
@@ -140,7 +142,8 @@ bool AFSK::Encoder::start() {
   maxTx = 3;
   sending = true;
   nextByte = 0;
-  dds->setFrequency(0);
+  currentTone = 0;
+  dds->setPrecalcFrequency(0);
   dds->on();
   return true;
 }
@@ -149,14 +152,13 @@ void AFSK::Encoder::stop() {
   randomWait = 0;
   sending = false;
   done = true;
-  dds->setFrequency(0);
+  dds->setPrecalcFrequency(0);
   dds->off();
 }
 
 AFSK::Decoder::Decoder() {
-  // Initialize the sampler delay line (phase shift)
-  //for(unsigned char i = 0; i < SAMPLEPERBIT/2; i++)
-  //  delay_fifo.enqueue(0);
+  // The delay line is left in its startup state, the first samples aren't
+  // useful and don't need initialization.
 }
 
 bool AFSK::HDLCDecode::hdlcParse(bool bit, SimpleFIFO<uint8_t,HAMSHIELD_AFSK_RX_FIFO_LEN> *fifo) {
@@ -309,24 +311,27 @@ bool AFSK::Decoder::read() {
         continue;
       } else {
         // We have some bytes in stream, check it meets minimum payload length
-        // Min payload is 1 (flag) + 14 (addressing) + 2 (control/PID) + 1 (flag)
-        if(currentPacket->len >= 16) {          
+        // Min payload is 14 (addressing) + 1 (control/PID) + 2 (FCS)
+        if(currentPacket->len > (AX25_PACKET_HEADER_MINLEN-1)) {          
           // We should end up here with a valid FCS due to the appendFCS
           if(currentPacket->crcOK()) { // Magic number for the CRC check passing
             // Valid frame, so, let's filter for control + PID
             // Maximum search distance is 71 bytes to end of the address fields
             // Skip the HDLC frame start
             bool filtered = false;
-            for(unsigned char i = 0; i < (currentPacket->len<70?currentPacket->len:71); ++i) {
-              if((currentPacket->getByte() & 0x1) == 0x1) { // Found a byte with LSB set
-                // which marks the final address payload
-                // next two bytes should be the control/PID
-                //if(currentPacket->getByte() == 0x03 && currentPacket->getByte() == 0xf0) {
-                  filtered = true;
-                  break; // Found it
-                //}
+            if(filteringEnabled) {
+              for(unsigned char i = 0; i < (currentPacket->len<70?currentPacket->len:71); ++i) {
+                if((currentPacket->getByte() & 0x1) == 0x1) { // Found a byte with LSB set
+                  // which marks the final address payload
+                  // next two bytes should be the control/PID
+                  if(currentPacket->getByte() == 0x03 && currentPacket->getByte() == 0xf0) {
+                    filtered = true;
+                    break; // Found it
+                  }
+                }
               }
-            }
+            } else
+              filtered = true;
             
             if(!filtered) {
               // Frame wasn't one we care about, discard
@@ -336,6 +341,7 @@ bool AFSK::Decoder::read() {
             
             // It's all done and formatted, ready to go
             currentPacket->ready = 1;
+            currentPacket->reset(); // Reset read pointer
             if(!pBuf.putPacket(currentPacket)) // Put it in the receive FIFO
               pBuf.freePacket(currentPacket); // Out of FIFO space, so toss it
             
@@ -354,30 +360,8 @@ bool AFSK::Decoder::read() {
   
 void AFSK::Decoder::start() {
   // Do this in start to allocate our first packet
+  // The decoder is clocked by the DDS ISR
   currentPacket = pBuf.makePacket(PACKET_MAX_LEN);
-/*  ASSR &= ~(_BV(EXCLK) | _BV(AS2));
-
-  // Do non-inverting PWM on pin OC2B (arduino pin 3) (p.159).
-  // OC2A (arduino pin 11) stays in normal port operation:
-  // COM2B1=1, COM2B0=0, COM2A1=0, COM2A0=0
-  // Mode 1 - Phase correct PWM
-  TCCR2A = (TCCR2A | _BV(COM2B1)) & ~(_BV(COM2B0) | _BV(COM2A1) | _BV(COM2A0)) |
-           _BV(WGM21) | _BV(WGM20);
-  // No prescaler (p.162)
-  TCCR2B = (TCCR2B & ~(_BV(CS22) | _BV(CS21))) | _BV(CS20) | _BV(WGM22);
-  
-  OCR2A = pow(2,COMPARE_BITS)-1;
-  OCR2B = 0;
-  // Configure the ADC and Timer1 to trigger automatic interrupts
-  TCCR1A = 0;
-  TCCR1B = _BV(CS11) | _BV(WGM13) | _BV(WGM12);
-  ICR1 = ((F_CPU / 8) / REFCLK) - 1;
-  ADMUX = _BV(REFS0) | _BV(ADLAR) | 0; // Channel 0, shift result left (ADCH used)
-  DDRC &= ~_BV(0);
-  PORTC &= ~_BV(0);
-  DIDR0 |= _BV(0);
-  ADCSRB = _BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0);
-  ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE) | _BV(ADIE) | _BV(ADPS2); // | _BV(ADPS0);  */
 }
   
 AFSK::PacketBuffer::PacketBuffer() {
@@ -387,12 +371,6 @@ AFSK::PacketBuffer::PacketBuffer() {
   for(unsigned char i = 0; i < PACKET_BUFFER_SIZE; ++i) {
     packets[i] = 0x0;
   }
-#ifdef PACKET_PREALLOCATE
-  for(unsigned char i = 0; i < PPOOL_SIZE; ++i) {
-    // Put some empty packets in the FIFO
-    preallocPool.enqueue(&preallocPackets[i]);
-  }
-#endif
 }
 
 unsigned char AFSK::PacketBuffer::readyCount() volatile {
@@ -600,6 +578,7 @@ bool AFSK::Packet::parsePacket() {
   // If there is no PID, we have no data
   if(!pid) {
     iFrameData = NULL;
+    length = 0;
     return true;
   }
   
@@ -608,7 +587,9 @@ bool AFSK::Packet::parsePacket() {
   
   // Cheat a little by setting the first byte of the FCS to 0, making it a string
   // First FCS byte is found at -2, HDLC flags aren't in this buffer
+  fcs0 = dataPtr[len-2]; // But save it to recreate the packet
   dataPtr[len-2] = '\0';
+  length = (dataPtr+len-2)-d;
   
   return true;
 }
@@ -735,6 +716,12 @@ void AFSK::timer() {
 
 void AFSK::start(DDS *dds) {
   afskEnabled = true;
+#ifdef PACKET_PREALLOCATE
+  for(unsigned char i = 0; i < PPOOL_SIZE; ++i) {
+    // Put some empty packets in the FIFO
+    preallocPool.enqueue(&preallocPackets[i]);
+  }
+#endif
   encoder.setDDS(dds);
   decoder.start();
 }

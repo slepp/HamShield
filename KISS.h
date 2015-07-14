@@ -15,16 +15,23 @@ public:
   bool read();
   void writePacket(AFSK::Packet *);
   void loop();
-  inline void isr() {
+  inline void isr() { // Conditional defines for refclk's off the 9600 required
+#if (DDS_REFCLK_DEFAULT != 9600)
     static uint8_t tcnt = 0;
+#endif
     TIFR1 = _BV(ICF1); // Clear the timer flag
+    PORTD |= _BV(4);
     dds->clockTick();
+#if (DDS_REFCLK_DEFAULT != 9600)
     if(++tcnt == (DDS_REFCLK_DEFAULT/9600)) {
-      PORTD |= _BV(2); // Diagnostic pin (D2)
+#endif
+      PORTD |= _BV(5); // Diagnostic pin (D5)
       radio->afsk.timer();
+#if (DDS_REFCLK_DEFAULT != 9600)
       tcnt = 0;
     }
-    PORTD &= ~(_BV(2));
+#endif
+    PORTD &= ~(_BV(4) | _BV(5));
   }
 private:
   Stream *io;

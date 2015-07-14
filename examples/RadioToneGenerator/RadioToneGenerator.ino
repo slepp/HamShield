@@ -4,7 +4,7 @@
 HamShield radio;
 
 void setup() {
-  Serial.begin(9600);
+   Serial.begin(9600);
   Wire.begin();
   radio.initialize();
   radio.setFrequency(145050);

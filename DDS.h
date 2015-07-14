@@ -180,6 +180,7 @@ public:
   // frequency supported will fit in a short.
   void setFrequency(unsigned short freq) { stepRate = calcFrequency(freq); };
   void setPrecalcFrequency(ddsAccumulator_t freq) { stepRate = freq; };
+  #define COMPILE_PRECALC_DDS(f) ((ddsAccumulator_t)(((float)(f) / (DDS_REFCLK_DEFAULT+DDS_REFCLK_OFFSET)) * pow(2,ACCUMULATOR_BITS)))
   
   // Handle phase shifts
   void setPhaseDeg(int16_t degrees);

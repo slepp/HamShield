@@ -102,13 +102,16 @@ void DDS::changePhaseDeg(int16_t degrees) {
   accumulator += degrees * (pow(2,ACCUMULATOR_BITS)/360.0);
 }
 
+//#define DDS_FAST_MODE
 // TODO: Clean this up a bit..
 void DDS::clockTick() {
-/*  if(running) {
+#ifdef DDS_FAST_MODE
+  if(running) {
     accumulator += stepRate;
     OCR2A = getDutyCycle();
   }
-  return;*/
+  return;
+#endif
   if(running) {
     accumulator += stepRate;
     if(timeLimited && tickDuration == 0) {
@@ -151,11 +154,16 @@ void DDS::clockTick() {
 }
 
 uint8_t DDS::getDutyCycle() {
-  #if ACCUMULATOR_BIT_SHIFT >= 24
-    uint16_t phAng;
-  #else
-    uint8_t phAng;
-  #endif
+#if ACCUMULATOR_BIT_SHIFT >= 24
+  uint16_t phAng;
+#else
+  uint8_t phAng;
+#endif
+#ifdef DDS_FAST_MODE
+  phAng = (accumulator >> ACCUMULATOR_BIT_SHIFT);
+  int8_t position = pgm_read_byte_near(ddsSineTable + phAng); //>>(8-COMPARATOR_BITS);
+  return (position >> (8-COMPARATOR_BITS)) + (128>>(8-COMPARATOR_BITS));
+#else
   if(amplitude == 0) // Shortcut out on no amplitude
     return 128>>(8-COMPARATOR_BITS);
   phAng = (accumulator >> ACCUMULATOR_BIT_SHIFT);
@@ -172,4 +180,5 @@ uint8_t DDS::getDutyCycle() {
   }
   scaled += 128>>(8-COMPARATOR_BITS);
   return scaled;
+#endif
 }
