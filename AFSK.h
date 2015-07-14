@@ -276,7 +276,7 @@ public:
     if(decoder.isReceiving()) {
       encoder.setRandomWait();
       return false;
-    } 
+    }
     return encoder.start();
   }
   inline bool putTXPacket(Packet *packet) {

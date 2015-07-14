@@ -109,9 +109,11 @@ void AFSK::Encoder::process() {
   
   if(currentTone == 0) {
     PORTD |= _BV(7);
+    //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x35, AFSK_SPACE*10);
     dds->setFrequency(AFSK_SPACE);
   } else {
     PORTD &= ~_BV(7);
+    //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x35, AFSK_MARK*10);
     dds->setFrequency(AFSK_MARK);
   }
 }

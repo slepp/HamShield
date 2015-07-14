@@ -243,7 +243,7 @@ void HamShield::initialize() {
 	tx_data = 0x0001;
     I2Cdev::writeWord(devAddr, 0x7F, tx_data);
 	
-	tx_data = 0x0014;
+	/*tx_data = 0x0014;
     I2Cdev::writeWord(devAddr, 0x06, tx_data);
 	tx_data = 0x020C;
     I2Cdev::writeWord(devAddr, 0x07, tx_data);
@@ -264,7 +264,7 @@ void HamShield::initialize() {
 	tx_data = 0x3F44;
     I2Cdev::writeWord(devAddr, 0x0F, tx_data);
 	tx_data = 0xE0EB;
-    I2Cdev::writeWord(devAddr, 0x12, tx_data);
+    I2Cdev::writeWord(devAddr, 0x12, tx_data);*/
 	
 	// done writing to upper page addresses, so set 0x7F back
 	tx_data = 0x0000;
@@ -892,6 +892,16 @@ void HamShield::setDTMFC7(uint16_t freq) {
 uint16_t HamShield::getDTMFC7() {
     I2Cdev::readBitsW(devAddr, A1846S_DTMF_C67_REG, A1846S_DTMF_C7_BIT, A1846S_DTMF_C7_LENGTH, radio_i2c_buf);
     return radio_i2c_buf[0];
+}
+
+// General tone generator
+void HamShield::prepareTone1() {
+  setTxSourceTone1();
+  I2Cdev::writeBitsW(devAddr, 0x79, 15, 2, 3);
+  I2Cdev::writeBitsW(devAddr, 0x41, 6, 7, 0b101);
+}
+void HamShield::generateTone1(uint16_t frequency) {
+  I2Cdev::writeWord(devAddr, 0x35, frequency*10);
 }
 
 // TX FM deviation

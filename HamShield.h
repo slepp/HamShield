@@ -540,6 +540,9 @@ class HamShield {
         bool parityCalc(int code);
        // void AFSKOut(char buffer[80]); 
 
+       void prepareTone1();
+       void generateTone1(uint16_t freq);
+       
        // AFSK routines
        bool AFSKStart();
        bool AFSKEnabled() { return afsk.enabled(); }
