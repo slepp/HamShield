@@ -1,5 +1,6 @@
 #include <HamShield.h>
 #include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
 HamShield radio;
 DDS dds;
@@ -36,7 +37,8 @@ void setup() {
   dds.setFrequency(0);
   dds.on();
   dds.setAmplitude(255);
-  I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x44, 0b0000011111111111);
+  //radio.prepareTone1();
+  I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x44, 0x05FF);
   //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x53, 0x0);
   //I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x32, 0xffff);
 }
@@ -51,7 +53,7 @@ void loop() {
     packet->appendFCS(0xf0);
     packet->print(F("Hello "));
     packet->print(millis());
-    packet->println(F("\r\nThis is a test of the HamShield Kickstarter prototype. de VE6SLP"));
+    //packet->println(F("\r\nThis is a test of the HamShield Kickstarter prototype. de VE6SLP"));
     packet->finish();
     
     bool ret = radio.afsk.putTXPacket(packet);
@@ -64,6 +66,8 @@ void loop() {
       } else {
         Serial.println(F("Tx Start failure"));
         radio.setModeReceive();
+        AFSK::PacketBuffer::freePacket(packet);
+        return;
       }
     }
     // Wait 2 seconds before we send our beacon again.
