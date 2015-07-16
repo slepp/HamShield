@@ -102,6 +102,12 @@ void AFSK::Encoder::process() {
   else
     ++lastZero;
 
+  if(currentBit) { // Bit stream output
+    PORTD |= _BV(6);
+  } else {
+    PORTD &= ~_BV(6);
+  }
+
   // NRZI and AFSK uses toggling 0s, "no change" on 1
   // So, if not a 1, toggle to the opposite tone
   if(!currentBit)
@@ -702,13 +708,11 @@ void AFSK::Packet::printPacket(Stream *s) {
 void AFSK::timer() {
   static uint8_t tcnt = 0;
   if(++tcnt == T_BIT && encoder.isSending()) {
-    PORTD |= _BV(6);
     // Only run the encoder every 8th tick
     // This is actually DDS RefClk / 1200 = 8, set as T_BIT
     // A different refclk needs a different value
     encoder.process();
     tcnt = 0;
-    PORTD &= ~_BV(6);
   } else {
     decoder.process(((int8_t)(ADCH - 128)));
   }

@@ -31,7 +31,10 @@ void setup() {
   I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x30, 0x06);
   I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x30, 0x26);
   I2Cdev::writeWord(A1846S_DEV_ADDR_SENLOW, 0x44, 0x05FF);
+<<<<<<< HEAD
   //0b0000011111111111);
+=======
+>>>>>>> upstream/master
 
   dds.start();
   radio.afsk.start(&dds);

@@ -28,6 +28,7 @@ void KISS::loop() {
      uint8_t c = (uint8_t)io->read();
      // Receiving a FEND means we are either about to start or just ended
      if(c == KISS_FEND) {
+<<<<<<< HEAD
        if(inPacket && inPacket->len) { // If we have a packet with length
          inPacket->finish(); // Append FCS
          inPacket->parsePacket();
@@ -51,6 +52,17 @@ void KISS::loop() {
          inPacket->restoreFCS();
          radio->afsk.encoder.putPacket(inPacket); // And queue it
          inPacket = NULL; // Go back out of frame
+=======
+       if(inFrame && kissLen > 0) {
+         int i;
+         AFSK::Packet *packet = AFSK::PacketBuffer::makePacket(PACKET_MAX_LEN);
+         packet->start();
+         for(i = 0; i < kissLen; i++) {
+           packet->appendFCS(kissBuffer[i]);
+         }
+         packet->finish();
+         radio->afsk.encoder.putPacket(packet);
+>>>>>>> upstream/master
        }
        prevFEND = true;
      }
