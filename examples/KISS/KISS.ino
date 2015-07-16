@@ -14,6 +14,8 @@ void setup() {
   pinMode(3, OUTPUT);
   pinMode(4, OUTPUT); // Debug clockTick
   pinMode(5, OUTPUT); // Debug AFSK timer
+  pinMode(6, OUTPUT); // Debug bits
+  pinMode(7, OUTPUT); // Debug bits
   pinMode(11, INPUT);
   
   Serial.begin(9600);
